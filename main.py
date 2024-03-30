@@ -7,12 +7,9 @@ from collections import Counter
 from typing import List
 
 import openpyxl
+import spacy
 import pyexcel as p
-import tqdm
 from gooey import GooeyParser, Gooey
-
-from lemmatization import lemmatize
-
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -39,13 +36,17 @@ def load_xls_sheet_values(xls_filepath, ranges: str, sheet_name=None, delimeter:
     '''Reads given XLS(X) specific sheet and returns values of cells in given range.'''
     # Converting xls file to .xlsx because openpyxl doesn't support xls
     is_temp = False
-    if xls_filepath.endswith("xls"):
+    if xls_filepath.endswith(".xls"):
         is_temp = True
-        xls_filepath = xls_filepath
         p.save_book_as(file_name=xls_filepath,
                     dest_file_name=f"{xls_filepath}x")
         xls_filepath = f"{xls_filepath}x"
 
+    if xls_filepath.endswith(".csv"):
+        is_temp = True
+        p.save_book_as(file_name=xls_filepath,
+                    dest_file_name=xls_filepath.replace(".csv", ".xlsx"))
+        xls_filepath = xls_filepath.replace(".csv", ".xlsx")
     # Loading workbook
     workbook = openpyxl.load_workbook(xls_filepath, True)
     
@@ -83,6 +84,9 @@ def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[str]:
     normalized_words = list(list())
     i = 0
     arr_size = len(strings)
+
+    nlp = spacy.load(resource_path("models"))
+
     if lemmatize_:
         logger.info("Normalizing strings. (Converting to lower-case and lemmatizing)")
         for line in strings:
@@ -90,7 +94,11 @@ def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[str]:
             logger.info(f"Processed cell: {i}/{arr_size}")
             normalized_words.append(list())
             for text in line[0]:
-                normalized_words[-1].append(lemmatize(text.lower()))
+                text = text.lower()
+                doc = nlp(text)
+                lemmas = [token.lemma_ for token in doc]
+                s = " ".join(lemmas)
+                normalized_words[-1].append(s)
     else:
         logger.info("Normalizing strings. (Converting to lower-case)")
         for line in strings:
@@ -102,17 +110,22 @@ def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[str]:
     
     logger.info("Successfully finished normalizing strings.")
     
-    return normalized_words    
+    return normalized_words
 
 def get_active_sheetname(xls_filepath: str) -> List[str]:
     # Converting xls file to .xlsx because openpyxl doesn't support xls
     is_temp = False
-    if xls_filepath.endswith("xls"):
+    if xls_filepath.endswith(".xls"):
         is_temp = True
-        xls_filepath = xls_filepath
         p.save_book_as(file_name=xls_filepath,
                     dest_file_name=f"{xls_filepath}x")
         xls_filepath = f"{xls_filepath}x"
+
+    if xls_filepath.endswith(".csv"):
+        is_temp = True
+        p.save_book_as(file_name=xls_filepath,
+                    dest_file_name=xls_filepath.replace(".csv", ".xlsx"))
+        xls_filepath = xls_filepath.replace(".csv", ".xlsx")
 
     # Loading workbook
     workbook = openpyxl.load_workbook(xls_filepath, True)
@@ -125,7 +138,7 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
 @Gooey(program_name="D2 Research Maker Toolkit",
        image_dir=resource_path("icons"),
        default_size=(950,780),
-       program_description="Simple co-occurrence analysis matrix generation tool.\nImport Data from XLSX.",
+       program_description="Simple co-occurrence analysis matrix generation tool. Automatically improves data, by normalizing it (Lemmatization).\nImport Data from XLSX.",
        menu=[{
         'name': 'Help',
         'items': [{
@@ -148,7 +161,7 @@ def main():
     parser.add_argument("filepath", metavar="Path to excel spreadsheet", type=str, widget="FileChooser", help="Choose XLS (Excel) file.",
                         gooey_options={
                             'wildcard':
-                                "XLSX (Excel spreadsheet) (*.xlsx,*.xls)|*.xlsx;*.xls|"
+                                "XLSX (Excel spreadsheet) (*.xlsx,*.xls,*.csv)|*.xlsx;*.xls;*.csv|"
                                 "All files (*.*)|*.*",
                             'default_file': "Pick XLSX file",
                             'message': "Select XLSX (Excel spreadsheet) file"
@@ -156,7 +169,7 @@ def main():
                         )
     parser.add_argument("--sheet_name", metavar="Name of the sheet",help="Select the sheetname. (Leave empty to select the active spreadsheet.)")
     parser.add_argument("range", metavar="Range",type=str, help="Range of the cells that will be used in frequency analysis.\nExample: E1:E18|A6:A19, use '|' to select two ranges at once")
-    parser.add_argument("--lemmatization", action='store_true', metavar="Lemmatization", widget="CheckBox", help="Groups together different inflected forms of the same word,\nfor example 'tree diseases' -> 'tree disease', 'asians' -> 'asian'\nTakes long time.", default=False)
+    parser.add_argument("--lemmatization", action='store_true', metavar="Lemmatization", widget="CheckBox", help="Groups together different inflected forms of the same word,\nfor example 'tree diseases' -> 'tree disease', 'asians' -> 'asian'", default=True)
     parser.add_argument("save_as", metavar="Save as...", help="Choose the output file name.",widget="FileSaver", default=os.path.join(get_execution_folder(),"output.xlsx"),
                         gooey_options={
                                 'wildcard':
@@ -178,7 +191,7 @@ def main():
     Delimeter: {repr(args.delimeter)}
     Keywords to exclude: {args.exclude_keywords}
 ''')
-    print(normalize(load_xls_sheet_values(args.filepath, args.range), lemmatize_=True))
+    print(normalize(load_xls_sheet_values(args.filepath, args.range), lemmatize_=args.lemmatization))
 
 if __name__ == "__main__":
     main()
