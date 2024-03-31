@@ -8,8 +8,18 @@ from typing import List
 
 import openpyxl
 import spacy
-import pyexcel as p
 from gooey import GooeyParser, Gooey
+
+# ---------------------------------------
+# NOTE: Do not remove these pyexcel imports as it requires direct imports to successfully compile using pyinstaller
+import pyexcel as p
+import pyexcel_xls 
+import pyexcel_xlsx
+import pyexcel_xlsxw
+import pyexcel_io
+# ---------------------------------------
+
+from matrix_generator import generate_excel, generate_co_occurrence_matrix
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -78,7 +88,7 @@ def load_xls_sheet_values(xls_filepath, ranges: str, sheet_name=None, delimeter:
 
     return texts
 
-def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[str]:
+def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[List[str]]:
     '''Normalize strings for co-occurrence analysis.
     Converts strings in list in list to their lower-cased and lemmatized version'''
     normalized_words = list(list())
@@ -88,7 +98,7 @@ def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[str]:
     nlp = spacy.load(resource_path("models"))
 
     if lemmatize_:
-        logger.info("Normalizing strings. (Converting to lower-case and lemmatizing)")
+        logger.info("(Converting data to lower-cased and lemmatizized version)")
         for line in strings:
             i += 1
             logger.info(f"Processed cell: {i}/{arr_size}")
@@ -100,16 +110,13 @@ def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[str]:
                 s = " ".join(lemmas)
                 normalized_words[-1].append(s)
     else:
-        logger.info("Normalizing strings. (Converting to lower-case)")
+        logger.info("(Converting data to lower-cased version)")
         for line in strings:
             i += 1
             logger.info(f"Processed cell: {i}/{arr_size}")
             normalized_words.append(list())
             for text in line[0]:
                 normalized_words[-1].append(text.lower())
-    
-    logger.info("Successfully finished normalizing strings.")
-    
     return normalized_words
 
 def get_active_sheetname(xls_filepath: str) -> List[str]:
@@ -137,8 +144,8 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
 
 @Gooey(program_name="D2 Research Maker Toolkit",
        image_dir=resource_path("icons"),
-       default_size=(950,780),
-       program_description="Simple co-occurrence analysis matrix generation tool. Automatically improves data, by normalizing it (Lemmatization).\nImport Data from XLSX.",
+       default_size=(980,780),
+       program_description="Simple co-occurrence analysis matrix generation tool. Automatically improves data, by normalizing it (Lemmatization).\nImport Data from .xlsx, .xls .csv.",
        menu=[{
         'name': 'Help',
         'items': [{
@@ -153,7 +160,7 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
         }],
         optional_cols=4,
         required_cols=2,
-        disable_progress_bar_animation=True, 
+        disable_progress_bar_animation=True
 
 )
 def main():
@@ -169,7 +176,7 @@ def main():
                         )
     parser.add_argument("--sheet_name", metavar="Name of the sheet",help="Select the sheetname. (Leave empty to select the active spreadsheet.)")
     parser.add_argument("range", metavar="Range",type=str, help="Range of the cells that will be used in frequency analysis.\nExample: E1:E18|A6:A19, use '|' to select two ranges at once")
-    parser.add_argument("--lemmatization", action='store_true', metavar="Lemmatization", widget="CheckBox", help="Groups together different inflected forms of the same word,\nfor example 'tree diseases' -> 'tree disease', 'asians' -> 'asian'", default=True)
+    parser.add_argument("--lemmatization", action='store_true', metavar="Lemmatization", widget="CheckBox", help="Groups together different inflected forms of the same word, for example:\n'tree diseases' -> 'tree disease'\n'asians' -> 'asian'", default=True)
     parser.add_argument("save_as", metavar="Save as...", help="Choose the output file name.",widget="FileSaver", default=os.path.join(get_execution_folder(),"output.xlsx"),
                         gooey_options={
                                 'wildcard':
@@ -191,8 +198,21 @@ def main():
     Delimeter: {repr(args.delimeter)}
     Keywords to exclude: {args.exclude_keywords}
 ''')
-    print(normalize(load_xls_sheet_values(args.filepath, args.range), lemmatize_=args.lemmatization))
+    logger.info(f"Loading {args.filepath} file.")
+    graph = load_xls_sheet_values(args.filepath, args.range)
+    logger.info(f"Successfully loaded and read {args.filepath}.")
+
+    logger.info(f"Starting to normalize data.")
+    graph = normalize(graph, lemmatize_=args.lemmatization)
+    logger.info("Successfully finished normalizing strings.")
+
+    logger.info("Generating co-occurrence matrix on a normalized data (graph).")
+    co_occurrence_matrix = generate_co_occurrence_matrix(graph)
+    logger.info("Successfully generated co-occurrence matrix.")
+
+    logger.info(f"Writing to {args.save_as}")
+    generate_excel(co_occurrence_matrix, args.save_as)
+    logger.info("Success! The program has finished.")
 
 if __name__ == "__main__":
     main()
-    #print(normalize(load_xls_sheet_values("savedrecs.xls", "T2:T10|Z2:Z10")))
