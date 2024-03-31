@@ -3,6 +3,7 @@ pyexcel
 pyexcel-xls
 pyexcel-xlsx
 pyexcel_xlsxw
+pyexcel_io
 gooey
 openpyxl
 pyinstaller

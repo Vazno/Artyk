@@ -3,7 +3,7 @@ from typing import List, Union
 
 import openpyxl
 
-def generate_co_occurrence_matrix(graph: List[List[str]]):
+def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
     '''Generate co-occurrence matrix based on undirected graph.'''
     all_keywords = list()
     for line in graph:
@@ -31,7 +31,6 @@ def generate_co_occurrence_matrix(graph: List[List[str]]):
     # matrix is symmetrical
     symmetry = 0
 
-    
     for keyword in sorted_arr:
         matrix.append(list())
         matrix[-1].append(keyword)
@@ -57,6 +56,8 @@ def generate_co_occurrence_matrix(graph: List[List[str]]):
                     for keywords in graph:
                         if matrix[y][0] in keywords and matrix[x][0] in keywords:
                             matrix[y][x] += 1
+                            if binary:
+                                break
 
     # Symmetry fill
     for y in range(len(matrix)):
@@ -74,6 +75,3 @@ def generate_excel(matrix: List[List[Union[str, int]]],
     for arr in matrix:
         ws.append(arr)
     wb.save(output_filename)
-
-
-

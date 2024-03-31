@@ -3,7 +3,6 @@
 import sys
 import os
 import logging
-from collections import Counter
 from typing import List
 
 import openpyxl
@@ -17,10 +16,12 @@ import pyexcel_xls
 import pyexcel_xlsx
 import pyexcel_xlsxw
 import pyexcel_io
+import pyexcel_io.writers
 # ---------------------------------------
 
 from matrix_generator import generate_excel, generate_co_occurrence_matrix
 
+# Setting up logger
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -88,10 +89,10 @@ def load_xls_sheet_values(xls_filepath, ranges: str, sheet_name=None, delimeter:
 
     return texts
 
-def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[List[str]]:
-    '''Normalize strings for co-occurrence analysis.
+def homogenize(strings: List[List[str]], lemmatize_: bool=False) -> List[List[str]]:
+    '''Homogenize strings for co-occurrence analysis.
     Converts strings in list in list to their lower-cased and lemmatized version'''
-    normalized_words = list(list())
+    homogenized_words = list(list())
     i = 0
     arr_size = len(strings)
 
@@ -102,22 +103,22 @@ def normalize(strings: List[List[str]], lemmatize_: bool=False) -> List[List[str
         for line in strings:
             i += 1
             logger.info(f"Processed cell: {i}/{arr_size}")
-            normalized_words.append(list())
+            homogenized_words.append(list())
             for text in line[0]:
                 text = text.lower()
                 doc = nlp(text)
                 lemmas = [token.lemma_ for token in doc]
                 s = " ".join(lemmas)
-                normalized_words[-1].append(s)
+                homogenized_words[-1].append(s)
     else:
         logger.info("(Converting data to lower-cased version)")
         for line in strings:
             i += 1
             logger.info(f"Processed cell: {i}/{arr_size}")
-            normalized_words.append(list())
+            homogenized_words.append(list())
             for text in line[0]:
-                normalized_words[-1].append(text.lower())
-    return normalized_words
+                homogenized_words[-1].append(text.lower())
+    return homogenized_words
 
 def get_active_sheetname(xls_filepath: str) -> List[str]:
     # Converting xls file to .xlsx because openpyxl doesn't support xls
@@ -144,8 +145,8 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
 
 @Gooey(program_name="D2 Research Maker Toolkit",
        image_dir=resource_path("icons"),
-       default_size=(980,780),
-       program_description="Simple co-occurrence analysis matrix generation tool. Automatically improves data, by normalizing it (Lemmatization).\nImport Data from .xlsx, .xls .csv.",
+       default_size=(1100,720),
+       program_description="Simple co-occurrence analysis matrix generation tool.\nImport Data from .xlsx, .xls .csv.",
        menu=[{
         'name': 'Help',
         'items': [{
@@ -158,9 +159,9 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
                 'website': 'mailto:artykbaev2003@gmail.com',
             }]
         }],
-        optional_cols=4,
-        required_cols=2,
-        disable_progress_bar_animation=True
+        optional_cols=5,
+        required_cols=3,
+        disable_progress_bar_animation=True, 
 
 )
 def main():
@@ -187,6 +188,8 @@ def main():
                             })
     parser.add_argument("--delimeter", metavar="Delimeter for cell's data", default="; ", help="Select the delimeter between keys in cell value.",)
     parser.add_argument("--exclude_keywords", metavar="Exclude specific keywords", help="If you want to remove cells that contain one of specific keywords, write them down through commas.\nExample: Science, Climate change")
+    parser.add_argument("--binary", action='store_true', metavar="Binary matrix", widget="CheckBox", help="Select if you want to make the co-occurrence matrix binary.\n(Only 0s and 1s)", default=False)
+
     args = parser.parse_args()
     logger.info("Starting algorithm.")
     logger.info(f'''The settings are:
@@ -197,17 +200,18 @@ def main():
     Save As: {args.save_as}
     Delimeter: {repr(args.delimeter)}
     Keywords to exclude: {args.exclude_keywords}
+    Binary: {args.binary}
 ''')
     logger.info(f"Loading {args.filepath} file.")
     graph = load_xls_sheet_values(args.filepath, args.range)
     logger.info(f"Successfully loaded and read {args.filepath}.")
 
-    logger.info(f"Starting to normalize data.")
-    graph = normalize(graph, lemmatize_=args.lemmatization)
-    logger.info("Successfully finished normalizing strings.")
+    logger.info(f"Starting to homogenize cell values.")
+    graph = homogenize(graph, lemmatize_=args.lemmatization)
+    logger.info("Successfully finished homogenizing cells.")
 
-    logger.info("Generating co-occurrence matrix on a normalized data (graph).")
-    co_occurrence_matrix = generate_co_occurrence_matrix(graph)
+    logger.info("Generating co-occurrence matrix on a homogenized cell values.")
+    co_occurrence_matrix = generate_co_occurrence_matrix(graph, args.binary)
     logger.info("Successfully generated co-occurrence matrix.")
 
     logger.info(f"Writing to {args.save_as}")
