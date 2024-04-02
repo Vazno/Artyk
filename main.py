@@ -43,7 +43,7 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-def load_xls_sheet_values(xls_filepath, ranges: str, sheet_name=None, delimeter:str="; ", exclude_keywords:List[str]=list()) -> List[List[str]]:
+def load_xls_sheet_values(xls_filepath, ranges: str, sheet_name=None, delimeter:str="; ") -> List[List[str]]:
     '''Reads given XLS(X) specific sheet and returns values of cells in given range.'''
     # Converting xls file to .xlsx because openpyxl doesn't support xls
     is_temp = False
@@ -72,14 +72,11 @@ def load_xls_sheet_values(xls_filepath, ranges: str, sheet_name=None, delimeter:
     for range_ in ranges.split("|"):
         for cell in curr[range_]:
             try:
-                if len(exclude_keywords) >= 0:
-                    for keyword in exclude_keywords:
-                        if cell[0].value != None:
-                            if keyword.lower() == cell[0].value.lower():
-                                continue
                 if cell[0].value != None:
                     texts.append(list())
-                    texts[-1].append(cell[0].value.split(delimeter))
+                    for word in cell[0].value.split(delimeter):
+                        texts[-1].append(word.strip())
+
             except TypeError as e:
                 pass
 
@@ -89,22 +86,24 @@ def load_xls_sheet_values(xls_filepath, ranges: str, sheet_name=None, delimeter:
 
     return texts
 
-def homogenize(strings: List[List[str]], lemmatize_: bool=False) -> List[List[str]]:
+def homogenize(graph: List[List[str]], lemmatize_: bool=False, language:str="english") -> List[List[str]]:
     '''Homogenize strings for co-occurrence analysis.
     Converts strings in list in list to their lower-cased and lemmatized version'''
     homogenized_words = list(list())
     i = 0
-    arr_size = len(strings)
+    arr_size = len(graph)
 
-    nlp = spacy.load(resource_path("models"))
+    if language == "english":
+        english = resource_path(os.path.join("models", "en_core_web_sm"))
+        nlp = spacy.load(english)
 
     if lemmatize_:
         logger.info("(Converting data to lower-cased and lemmatizized version)")
-        for line in strings:
+        for line in graph:
             i += 1
             logger.info(f"Processed cell: {i}/{arr_size}")
             homogenized_words.append(list())
-            for text in line[0]:
+            for text in line:
                 text = text.lower()
                 doc = nlp(text)
                 lemmas = [token.lemma_ for token in doc]
@@ -112,13 +111,27 @@ def homogenize(strings: List[List[str]], lemmatize_: bool=False) -> List[List[st
                 homogenized_words[-1].append(s)
     else:
         logger.info("(Converting data to lower-cased version)")
-        for line in strings:
+        for line in graph:
             i += 1
             logger.info(f"Processed cell: {i}/{arr_size}")
             homogenized_words.append(list())
             for text in line[0]:
                 homogenized_words[-1].append(text.lower())
     return homogenized_words
+
+def exclude_keywords_from_graph(graph: List[List[str]], exclude_keywords: List[str]) -> List[List[str]]:
+    '''Returns graph where given keywords are excluded from graph (Nodes connected to the excluded keywords (nodes) are removed too).'''
+    fixed_graph = list()
+    if exclude_keywords == None:
+        return graph
+    lower_cased = [word.lower().strip() for word in exclude_keywords]
+
+    for line in graph:
+        if len(set(line).intersection(set(lower_cased))) != 0:
+            pass
+        else:
+            fixed_graph.append(line)
+    return fixed_graph
 
 def get_active_sheetname(xls_filepath: str) -> List[str]:
     # Converting xls file to .xlsx because openpyxl doesn't support xls
@@ -146,7 +159,9 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
 @Gooey(program_name="D2 Research Maker Toolkit",
        image_dir=resource_path("icons"),
        default_size=(1100,720),
-       program_description="Simple co-occurrence analysis matrix generation tool.\nImport Data from .xlsx, .xls .csv.",
+program_description="""Simple co-occurrence analysis matrix generation tool.
+Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.
+""",
        menu=[{
         'name': 'Help',
         'items': [{
@@ -161,8 +176,7 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
         }],
         optional_cols=5,
         required_cols=3,
-        disable_progress_bar_animation=True, 
-
+        disable_progress_bar_animation=True
 )
 def main():
     parser = GooeyParser()
@@ -186,8 +200,8 @@ def main():
                                 'message': "Create name for xlsx file",
                                 'default_file': "output.xlsx"
                             })
-    parser.add_argument("--delimeter", metavar="Delimeter for cell's data", default="; ", help="Select the delimeter between keys in cell value.",)
-    parser.add_argument("--exclude_keywords", metavar="Exclude specific keywords", help="If you want to remove cells that contain one of specific keywords, write them down through commas.\nExample: Science, Climate change")
+    parser.add_argument("--delimeter", metavar="Delimeter for cell's data", default=";", help="Select the delimeter between keys in cell value.",)
+    parser.add_argument("--exclude_keywords", type=str, metavar="Exclude specific keywords", help="If you want to remove cells that contain one of specific keywords, write them using semicolons (;) or commas (,)\nExample: Science; Climate change")
     parser.add_argument("--binary", action='store_true', metavar="Binary matrix", widget="CheckBox", help="Select if you want to make the co-occurrence matrix binary.\n(Only 0s and 1s)", default=False)
 
     args = parser.parse_args()
@@ -203,12 +217,23 @@ def main():
     Binary: {args.binary}
 ''')
     logger.info(f"Loading {args.filepath} file.")
+
     graph = load_xls_sheet_values(args.filepath, args.range)
     logger.info(f"Successfully loaded and read {args.filepath}.")
 
     logger.info(f"Starting to homogenize cell values.")
     graph = homogenize(graph, lemmatize_=args.lemmatization)
     logger.info("Successfully finished homogenizing cells.")
+
+    if args.exclude_keywords:
+        main_delimeter = ";"
+        if len(args.exclude_keywords.split(";")) > 1:
+            main_delimeter = ";"
+        elif len(args.exclude_keywords.split(",")) > 1:
+            main_delimeter = ","
+        logger.info("Starting to exclude selected keywords.")
+        graph = exclude_keywords_from_graph(graph, args.exclude_keywords.lower().split(main_delimeter))
+        logger.info("Successfully excludeded selected keywords.")
 
     logger.info("Generating co-occurrence matrix on a homogenized cell values.")
     co_occurrence_matrix = generate_co_occurrence_matrix(graph, args.binary)
