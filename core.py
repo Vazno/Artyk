@@ -1,7 +1,12 @@
-from collections import Counter
-from typing import List, Union
+# Copyright (C) 2024 Beksultan Artykbaev - All Rights Reserved
 
-import xlsxwriter
+import os
+from collections import Counter
+from typing import List
+
+import spacy
+
+from path_utils import resource_path
 
 def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
     '''Generate co-occurrence matrix based on undirected graph.'''
@@ -65,13 +70,44 @@ def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
                 matrix[y][x] = matrix[x][y]
     return matrix
 
-def generate_excel(matrix: List[List[Union[str, int]]],
-                   output_filename: str) -> None:
-    workbook = xlsxwriter.Workbook(output_filename)
-    worksheet = workbook.add_worksheet()
-    col = 0
+def homogenize(graph: List[List[str]], lemmatize_: bool=True, language:str="english") -> List[List[str]]:
+    '''Homogenize strings for co-occurrence analysis.
+    Converts strings in list in list to their lower-cased and lemmatized version'''
+    homogenized_words = list(list())
+    i = 0
 
-    for row, data in enumerate(matrix):
-        worksheet.write_row(row, col, data)
+    if language == "english":
+        english = resource_path(os.path.join("models", "en_core_web_sm"))
+        nlp = spacy.load(english)
 
-    workbook.close()
+    if lemmatize_:
+        for line in graph:
+            i += 1
+            homogenized_words.append(list())
+            for text in line:
+                text = text.lower()
+                doc = nlp(text)
+                lemmas = [token.lemma_ for token in doc]
+                s = " ".join(lemmas)
+                homogenized_words[-1].append(s)
+    else:
+        for line in graph:
+            i += 1
+            homogenized_words.append(list())
+            for text in line[0]:
+                homogenized_words[-1].append(text.lower())
+    return homogenized_words
+
+def exclude_keywords_from_graph(graph: List[List[str]], exclude_keywords: List[str]) -> List[List[str]]:
+    '''Returns graph where given keywords are excluded from graph (Nodes connected to the excluded keywords (nodes) are removed too).'''
+    fixed_graph = list()
+    if exclude_keywords == None:
+        return graph
+    lower_cased = [word.lower().strip() for word in exclude_keywords]
+
+    for line in graph:
+        if len(set(line).intersection(set(lower_cased))) != 0:
+            pass
+        else:
+            fixed_graph.append(line)
+    return fixed_graph
