@@ -1,7 +1,7 @@
 from collections import Counter
 from typing import List, Union
 
-import openpyxl
+import xlsxwriter
 
 def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
     '''Generate co-occurrence matrix based on undirected graph.'''
@@ -21,7 +21,7 @@ def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
     matrix.append(list())
     matrix[-1].append(None)
 
-    # Filling first row with var names    
+    # Filling first row with var names
     for keyword in sorted_arr:
         matrix[-1].append(keyword)
 
@@ -37,7 +37,6 @@ def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
 
         for j in range(symmetry):
             matrix[-1].append("") # Leaving empty for auto symmetry fill later
-        
 
         for i in range(len(sorted_arr)-symmetry):
             matrix[-1].append(0)
@@ -62,16 +61,17 @@ def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
     # Symmetry fill
     for y in range(len(matrix)):
         for x in range(len(matrix[y])):
-            if y != 0 and x != 0:
-                if matrix[y][x] == "":
-                    matrix[y][x] = matrix[x][y]
+            if matrix[y][x] == "":
+                matrix[y][x] = matrix[x][y]
     return matrix
-
 
 def generate_excel(matrix: List[List[Union[str, int]]],
                    output_filename: str) -> None:
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    for arr in matrix:
-        ws.append(arr)
-    wb.save(output_filename)
+    workbook = xlsxwriter.Workbook(output_filename)
+    worksheet = workbook.add_worksheet()
+    col = 0
+
+    for row, data in enumerate(matrix):
+        worksheet.write_row(row, col, data)
+
+    workbook.close()

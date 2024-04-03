@@ -163,17 +163,18 @@ program_description="""Simple co-occurrence analysis matrix generation tool.
 Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.
 """,
        menu=[{
-        'name': 'Help',
-        'items': [{
-                'type': 'AboutDialog',
-                'menuTitle': 'About',
-                'name': 'D2 Research Maker Toolkit',
-                'description': 'Research toolkit for universities all around the world.',
-                'version': '0.1.0',
-                'copyright': 'Copyright (C) 2024 Beksultan Artykbaev - All Rights Reserved',
-                'website': 'mailto:artykbaev2003@gmail.com',
+        "name": "Help",
+        "items": [{
+                "type": "AboutDialog",
+                "menuTitle": "About",
+                "name": "D2 Research Maker Toolkit",
+                "description": "Research toolkit for universities all around the world.",
+                "version": "0.1.0",
+                "copyright": "Copyright (C) 2024 Beksultan Artykbaev - All Rights Reserved",
+                "website": "mailto:artykbaev2003@gmail.com",
             }]
-        }],
+        },
+        ],
         optional_cols=5,
         required_cols=3,
         disable_progress_bar_animation=True
@@ -192,13 +193,13 @@ def main():
     parser.add_argument("--sheet_name", metavar="Name of the sheet",help="Select the sheetname. (Leave empty to select the active spreadsheet.)")
     parser.add_argument("range", metavar="Range",type=str, help="Range of the cells that will be used in frequency analysis.\nExample: E1:E18|A6:A19, use '|' to select two ranges at once")
     parser.add_argument("--lemmatization", action='store_true', metavar="Lemmatization", widget="CheckBox", help="Groups together different inflected forms of the same word, for example:\n'tree diseases' -> 'tree disease'\n'asians' -> 'asian'", default=True)
-    parser.add_argument("save_as", metavar="Save as...", help="Choose the output file name.",widget="FileSaver", default=os.path.join(get_execution_folder(),"output.xlsx"),
+    parser.add_argument("save_as", metavar="Save as...", help="Choose the output file name.",widget="FileSaver",
+                        default=os.path.join(get_execution_folder(),"output.xlsx"),
                         gooey_options={
                                 'wildcard':
                                     "XLSX (Excel spreadsheet) (*.xlsx)|*.xlsx|"
                                     "All files (*.*)|*.*",
-                                'message': "Create name for xlsx file",
-                                'default_file': "output.xlsx"
+                                'message': "Create a name for the xlsx file",
                             })
     parser.add_argument("--delimeter", metavar="Delimeter for cell's data", default=";", help="Select the delimeter between keys in cell value.",)
     parser.add_argument("--exclude_keywords", type=str, metavar="Exclude specific keywords", help="If you want to remove cells that contain one of specific keywords, write them using semicolons (;) or commas (,)\nExample: Science; Climate change")

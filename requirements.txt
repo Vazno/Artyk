@@ -7,3 +7,4 @@ pyexcel_io
 gooey
 openpyxl
 pyinstaller
+xlsxwriter
