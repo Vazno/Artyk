@@ -9,6 +9,7 @@ from gooey import GooeyParser, Gooey
 from core import generate_co_occurrence_matrix, exclude_keywords_from_graph, homogenize
 from path_utils import resource_path, get_execution_folder
 from spreadsheet import get_active_sheetname, generate_excel, load_xls_sheet_values
+from download_lemmatizers import models
 
 __version__ = "0.1.0"
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @Gooey(program_name="D2 Research Maker Toolkit",
        image_dir=resource_path("icons"),
-       default_size=(1100,720),
+       default_size=(1100,780),
 program_description="""Simple co-occurrence analysis matrix generation tool.
 Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.
 """,
@@ -35,13 +36,14 @@ Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.
             }]
         },
         ],
-        optional_cols=5,
+        optional_cols=3,
         required_cols=3,
         disable_progress_bar_animation=True
 )
 def main():
     parser = GooeyParser()
-    parser.add_argument("filepath", metavar="Path to excel spreadsheet", type=str, widget="FileChooser", help="Choose XLS (Excel) file.",
+    parser.add_argument("filepath", metavar="Path to excel spreadsheet", type=str, widget="FileChooser",
+                        help="Choose path to spreadsheet file.\n(.xlsx, .xls, .csv)",
                         gooey_options={
                             'wildcard':
                                 "XLSX (Excel spreadsheet) (*.xlsx,*.xls,*.csv)|*.xlsx;*.xls;*.csv|"
@@ -53,6 +55,7 @@ def main():
     parser.add_argument("--sheet_name", metavar="Name of the sheet",help="Select the sheetname. (Leave empty to select the active spreadsheet.)")
     parser.add_argument("range", metavar="Range",type=str, help="Range of the cells that will be used in frequency analysis.\nExample: E1:E18|A6:A19, use '|' to select two ranges at once")
     parser.add_argument("--lemmatization", action='store_true', metavar="Lemmatization", widget="CheckBox", help="Groups together different inflected forms of the same word, for example:\n'tree diseases' -> 'tree disease'\n'asians' -> 'asian'", default=True)
+    parser.add_argument("--lemmatization_language", metavar="Select the lemmatization language", widget="Dropdown", choices=[model[0].upper()+model[1::] for model in models], default="English")
     parser.add_argument("save_as", metavar="Save as...", help="Choose the output file name.",widget="FileSaver",
                         default=os.path.join(get_execution_folder(),"output.xlsx"),
                         gooey_options={
@@ -75,6 +78,7 @@ def main():
     Sheet name: {get_active_sheetname(args.filepath)}
     Range: {args.range}
     Lemmatization: {args.lemmatization}
+    Lemmatization language: {args.lemmatization_language}
     Save As: {args.save_as}
     Delimeter: {repr(args.delimeter)}
     Keywords to exclude: {args.exclude_keywords}
@@ -86,7 +90,7 @@ def main():
     logger.info(f"Successfully loaded and read {args.filepath}.")
 
     logger.info(f"Starting to homogenize cell values.")
-    graph = homogenize(graph, lemmatize_=args.lemmatization)
+    graph = homogenize(graph, lemmatize_=args.lemmatization, language=args.lemmatization_language)
     logger.info("Successfully finished homogenizing cells.")
 
     if args.exclude_keywords:

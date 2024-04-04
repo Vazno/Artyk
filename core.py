@@ -7,6 +7,7 @@ from typing import List
 import spacy
 
 from path_utils import resource_path
+from download_lemmatizers import models
 
 def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
     '''Generate co-occurrence matrix based on undirected graph.'''
@@ -76,9 +77,8 @@ def homogenize(graph: List[List[str]], lemmatize_: bool=True, language:str="engl
     homogenized_words = list(list())
     i = 0
 
-    if language == "english":
-        english = resource_path(os.path.join("models", "en_core_web_sm"))
-        nlp = spacy.load(english)
+    model = models[language.lower()]
+    nlp = spacy.load(model)
 
     if lemmatize_:
         for line in graph:
