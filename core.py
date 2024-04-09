@@ -59,7 +59,7 @@ def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
                     pass
                 else:
                     for keywords in graph:
-                        if matrix[y][0] in keywords and matrix[x][0] in keywords:
+                        if matrix[y][0] in set(keywords) and matrix[x][0] in set(keywords):
                             matrix[y][x] += 1
                             if binary:
                                 break
@@ -78,7 +78,7 @@ def homogenize(graph: List[List[str]], lemmatize_: bool=True, language:str="engl
     i = 0
 
     model = models[language.lower()]
-    nlp = spacy.load(model)
+    nlp = spacy.load(os.path.join(resource_path("models"), model))
 
     if lemmatize_:
         for line in graph:

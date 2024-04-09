@@ -6,7 +6,7 @@ commands = [
     '--add-data "icons;icons"',
     '--add-data "models;models"',
     f'--icon="{os.path.join("icons", "program_icon.ico")}"',
-    '--name "D2 Research Tool"',
+    '--name "D2 Research Maker Toolkit"',
     '--noconsole "main.py"'
 ]
 

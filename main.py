@@ -2,7 +2,6 @@
 
 import os
 import logging
-from typing import List
 
 from gooey import GooeyParser, Gooey
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @Gooey(program_name="D2 Research Maker Toolkit",
        image_dir=resource_path("icons"),
-       default_size=(1100,780),
+       default_size=(1100,790),
 program_description="""Simple co-occurrence analysis matrix generation tool.
 Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.
 """,
@@ -40,7 +39,7 @@ Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.
         required_cols=3,
         disable_progress_bar_animation=True
 )
-def main():
+def main() -> None:
     parser = GooeyParser()
     parser.add_argument("filepath", metavar="Path to excel spreadsheet", type=str, widget="FileChooser",
                         help="Choose path to spreadsheet file.\n(.xlsx, .xls, .csv)",
@@ -55,7 +54,7 @@ def main():
     parser.add_argument("--sheet_name", metavar="Name of the sheet",help="Select the sheetname. (Leave empty to select the active spreadsheet.)")
     parser.add_argument("range", metavar="Range",type=str, help="Range of the cells that will be used in frequency analysis.\nExample: E1:E18|A6:A19, use '|' to select two ranges at once")
     parser.add_argument("--lemmatization", action='store_true', metavar="Lemmatization", widget="CheckBox", help="Groups together different inflected forms of the same word, for example:\n'tree diseases' -> 'tree disease'\n'asians' -> 'asian'", default=True)
-    parser.add_argument("--lemmatization_language", metavar="Select the lemmatization language", widget="Dropdown", choices=[model[0].upper()+model[1::] for model in models], default="English")
+    parser.add_argument("--lemmatization_language", metavar="Lemmatization language", help="Choose the language of your document.\n(Lemmatization for this language will be applied).",widget="Dropdown", choices=[model[0].upper()+model[1::] for model in models], default="English")
     parser.add_argument("save_as", metavar="Save as...", help="Choose the output file name.",widget="FileSaver",
                         default=os.path.join(get_execution_folder(),"output.xlsx"),
                         gooey_options={
@@ -64,7 +63,7 @@ def main():
                                     "All files (*.*)|*.*",
                                 'message': "Create a name for the xlsx file",
                             })
-    parser.add_argument("--delimeter", metavar="Delimeter for cell's data", default=";", help="Select the delimeter between keys in cell value.",)
+    parser.add_argument("--delimeter", metavar="Delimeter for cell's data", default=";", help="Select the delimeter between keys in cell value.\nFor your original document.",)
     parser.add_argument("--exclude_keywords", type=str, metavar="Exclude specific keywords", help="If you want to remove cells that contain one of specific keywords, write them using semicolons (;) or commas (,)\nExample: Science; Climate change")
     parser.add_argument("--binary", action='store_true', metavar="Binary matrix", widget="CheckBox", help="Select if you want to make the co-occurrence matrix binary.\n(Only 0s and 1s)", default=False)
 
@@ -75,7 +74,7 @@ def main():
             D2 Research Maker Toolkit {__version__}    
 ----------------------------------------------------
     Excel spreadsheet path: {args.filepath}
-    Sheet name: {get_active_sheetname(args.filepath)}
+    Sheet name: {get_active_sheetname(args.filepath) if args.sheet_name == None else args.sheet_name}
     Range: {args.range}
     Lemmatization: {args.lemmatization}
     Lemmatization language: {args.lemmatization_language}
@@ -86,7 +85,7 @@ def main():
 ----------------------------------------------------''')
     logger.info(f"Loading {args.filepath} file.")
 
-    graph = load_xls_sheet_values(args.filepath, args.range)
+    graph = load_xls_sheet_values(args.filepath, args.range, args.sheet_name, args.delimeter)
     logger.info(f"Successfully loaded and read {args.filepath}.")
 
     logger.info(f"Starting to homogenize cell values.")

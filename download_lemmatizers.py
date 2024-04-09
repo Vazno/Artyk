@@ -4,7 +4,6 @@ import pathlib
 import spacy
 import spacy.cli.download
 
-
 def download_model(model_name):
     spacy.cli.download(model_name)
 

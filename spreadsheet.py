@@ -2,6 +2,7 @@
 
 import os
 import logging
+import time
 from typing import List, Union, Tuple
 
 import xlsxwriter
@@ -20,18 +21,33 @@ import pyexcel_io.writers
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(filename)s:%(lineno)d]: %(message)s')
 logger = logging.getLogger(__name__)
 
+def in_use(filename):
+    '''Checks if program is currently being used (in run).'''
+    try:
+        os.rename(filename, filename)
+        return False
+    except:    
+        return True
+
 def generate_excel(matrix: List[List[Union[str, int]]],
                    output_filename: str) -> None:
     '''Generate xlsx file from co-occurrence matrix.'''
-    workbook = xlsxwriter.Workbook(output_filename)
-    worksheet = workbook.add_worksheet()
-    col = 0
+    try:
+        workbook = xlsxwriter.Workbook(output_filename)
+        worksheet = workbook.add_worksheet()
+        col = 0
 
-    for row, data in enumerate(matrix):
-        worksheet.write_row(row, col, data)
+        for row, data in enumerate(matrix):
+            worksheet.write_row(row, col, data)
 
-    workbook.close()
-
+        workbook.close()
+    except xlsxwriter.exceptions.FileCreateError:
+        logger.info(f"You are trying to save to an opened file: {repr(output_filename)}, please close that file.")
+        while in_use(output_filename):
+            time.sleep(0.1)
+        logger.info(f"You have closed: {repr(output_filename)}, continuing saving to that file.")
+        generate_excel(matrix, output_filename)
+            
 def create_xlsx_copy(filename:str) -> None:
     '''Convert file with other spreadsheet filetype format to .xlsx'''
     if filename.endswith(".xls"):
@@ -47,7 +63,7 @@ The tested formats are: (csv, xlsx, xls)''')
         new_filename = filename.split(".")[0] + ".xlsx"
         p.save_book_as(filename=filename, dest_file_name=new_filename)
 
-def load_xls_sheet_values(xls_filepath: str, ranges: str, sheet_name=None, delimeter:str="; ") -> List[List[str]]:
+def load_xls_sheet_values(xls_filepath: str, ranges: str, sheet_name=None, delimeter:str=";") -> List[List[str]]:
     '''Reads given XLS(X) specific sheet and returns values of cells in given range.'''
     # Converting xls file to .xlsx because openpyxl doesn't support xls
     is_temp = False
