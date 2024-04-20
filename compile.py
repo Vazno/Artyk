@@ -1,4 +1,8 @@
+# Copyright (C) 2024 Beksultan Artykbaev - All Rights Reserved
+
 import os
+
+from main import APP_NAME
 
 commands = [
     "pyinstaller",
@@ -6,7 +10,7 @@ commands = [
     '--add-data "icons;icons"',
     '--add-data "models;models"',
     f'--icon="{os.path.join("icons", "program_icon.ico")}"',
-    '--name "D2 Research Maker Toolkit"',
+    f'--name "{APP_NAME}"',
     '--noconsole "main.py"'
 ]
 

@@ -11,12 +11,13 @@ from spreadsheet import get_active_sheetname, generate_excel, load_xls_sheet_val
 from download_lemmatizers import models
 
 __version__ = "0.1.0"
+APP_NAME = "Artyk - Research Maker"
 
 # Setting up logger
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [%(filename)s:%(lineno)d]: %(message)s')
 logger = logging.getLogger(__name__)
 
-@Gooey(program_name="D2 Research Maker Toolkit",
+@Gooey(program_name=APP_NAME,
        image_dir=resource_path("icons"),
        default_size=(1100,790),
 program_description="""Simple co-occurrence analysis matrix generation tool.
@@ -27,7 +28,7 @@ Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.
         "items": [{
                 "type": "AboutDialog",
                 "menuTitle": "About",
-                "name": "D2 Research Maker Toolkit",
+                "name": APP_NAME,
                 "description": "Research toolkit for universities all around the world.",
                 "version": __version__,
                 "copyright": "Copyright (C) 2024 Beksultan Artykbaev - All Rights Reserved",
@@ -71,7 +72,7 @@ def main() -> None:
     logger.info("Starting algorithm.")
     logger.info(f'''The settings are:
 ----------------------------------------------------
-            D2 Research Maker Toolkit {__version__}    
+            {APP_NAME} {__version__}    
 ----------------------------------------------------
     Excel spreadsheet path: {args.filepath}
     Sheet name: {get_active_sheetname(args.filepath) if args.sheet_name == None else args.sheet_name}
