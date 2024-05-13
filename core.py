@@ -9,6 +9,34 @@ import spacy
 from path_utils import resource_path
 from download_lemmatizers import models
 
+def filter_by_frequency(graph: List[List[str]], num: int) -> List[List[str]]:
+    '''Keep only num keywords in a graph, sorted by a frequency.'''
+    if num == 0:
+        return
+    all_keywords = list()
+    for line in graph:
+        for keyword in line:
+            all_keywords.append(keyword)
+    
+    # Sorting by quantity
+    c = Counter(all_keywords)
+    most_common = c.most_common()
+
+    filtered_arr = list()
+
+    for i in range(num):
+        filtered_arr.append(most_common[i][0]) # extracting keyword
+
+    new_graph = list()
+    for line in graph:
+        keywords = list()
+        for keyword in line:
+            if keyword in filtered_arr:
+                keywords.append(keyword)
+        if len(keywords) >= 1:
+            new_graph.append(keywords)
+    return new_graph
+
 def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
     '''Generate co-occurrence matrix based on undirected graph.'''
     all_keywords = list()

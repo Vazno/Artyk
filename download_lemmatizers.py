@@ -25,7 +25,6 @@ models = {
     "bokmal": "nb_core_news_sm",
     "russian": "ru_core_news_sm",
     "ukranian": "uk_core_news_sm",
-    "korean": "ko_core_news_sm"
 }
 if __name__ == "__main__":
     for model in models:
