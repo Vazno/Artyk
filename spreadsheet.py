@@ -114,3 +114,15 @@ def get_active_sheetname(xls_filepath: str) -> List[str]:
     if is_temp:
         os.remove(xls_filepath)
     return sheetname
+
+def read_savedrecs(filename: str) -> List[List[str]]:
+    '''Read tab-delimeted file (WOS savedrecs.txt)'''
+    with open(filename, encoding="utf-8-sig") as f:
+        text = f.read()
+    lines = text.split("\n")
+    matrix = list()
+
+    for line in lines:
+        elements = line.split("\t")
+        matrix.append(elements)
+    return matrix

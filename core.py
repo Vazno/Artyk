@@ -99,32 +99,28 @@ def generate_co_occurrence_matrix(graph: List[List[str]], binary:bool=False):
                 matrix[y][x] = matrix[x][y]
     return matrix
 
-def homogenize(graph: List[List[str]], lemmatize_: bool=True, language:str="english") -> List[List[str]]:
-    '''Homogenize strings for co-occurrence analysis.
-    Converts strings in list in list to their lower-cased and lemmatized version'''
-    homogenized_words = list(list())
-    i = 0
+def homogenize(graph: List[List[str]]) -> List[List[str]]:
+    '''Converts strings in graph to their lower-cased version'''
+    homogenized_graph = list(list())
+    for line in graph:
+        homogenized_graph.append(list())
+        for text in line[0]:
+            homogenized_graph[-1].append(text.lower())
+    return homogenized_graph
 
+def lemmatize(graph: List[List[str]], language:str="english") -> List[List[str]]:
+    '''Converts strings in graph to their lemmatized version'''
+    lemmatized_words = list(list())
     model = models[language.lower()]
     nlp = spacy.load(os.path.join(resource_path("models"), model))
-
-    if lemmatize_:
-        for line in graph:
-            i += 1
-            homogenized_words.append(list())
-            for text in line:
-                text = text.lower()
-                doc = nlp(text)
-                lemmas = [token.lemma_ for token in doc]
-                s = " ".join(lemmas)
-                homogenized_words[-1].append(s)
-    else:
-        for line in graph:
-            i += 1
-            homogenized_words.append(list())
-            for text in line[0]:
-                homogenized_words[-1].append(text.lower())
-    return homogenized_words
+    for line in graph:
+        lemmatized_words.append(list())
+        for text in line:
+            doc = nlp(text)
+            lemmas = [token.lemma_ for token in doc]
+            s = " ".join(lemmas)
+            lemmatized_words[-1].append(s)
+    return lemmatized_words
 
 def exclude_keywords_from_graph(graph: List[List[str]], exclude_keywords: List[str]) -> List[List[str]]:
     '''Returns graph where given keywords are excluded from graph (Nodes connected to the excluded keywords (nodes) are removed too).'''
