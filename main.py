@@ -2,6 +2,8 @@
 
 import os
 import logging
+from uuid import uuid4
+from collections import Counter
 
 from gooey import GooeyParser, Gooey
 
@@ -20,7 +22,8 @@ logger = logging.getLogger(__name__)
 @Gooey(program_name=APP_NAME,
        image_dir=resource_path("icons"),
        default_size=(1100,790),
-program_description="""Multi-tool application for analysing research papers. (co-occurrence analysis matrix generation tool, savedrecs to xlsx, frequency analyser)
+program_description="""Simple co-occurrence analysis matrix generation tool.
+Import Data from .xlsx, .xls .csv, tabdelimited file (.txt), Homogenize given data using lemmatizing.
 """,
        menu=[{
         "name": "Help",
@@ -47,13 +50,13 @@ def main() -> None:
 
     co_occurrence_parser = subs.add_parser('co-occurrence-analysis', help='''Simple co-occurrence analysis matrix generation tool.
 Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.''')
-    co_occurrence_parser.add_argument("filepaths", metavar="Path(es) to excel spreadsheet(s)", nargs='+', type=str, widget="MultiFileChooser",
-                        help="Choose path(es) to spreadsheet file.\n(.xlsx, .xls, .csv)",
+    co_occurrence_parser.add_argument("filepaths", metavar="Path(es) to excel spreadsheet(s).", nargs='+', type=str, widget="MultiFileChooser",
+                        help="Choose path(es) to spreadsheet file.\n(.xlsx, .xls, .csv) or to tabdelimited file (savedrecs.txt)",
                         gooey_options={
                             'wildcard':
-                                "XLSX (Excel spreadsheet) (*.xlsx,*.xls,*.csv)|*.xlsx;*.xls;*.csv|"
+                                "XLSX (Excel spreadsheet) (*.xlsx,*.xls,*.csv,*.txt)|*.xlsx;*.xls;*.csv;*.txt|"
                                 "All files (*.*)|*.*",
-                            'default_file': "Pick XLSX file",
+                            'default_file': "Pick XLSX or tab delimited file",
                             'message': "Select XLSX (Excel spreadsheet) file"
                         }
                         )
@@ -74,30 +77,7 @@ Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.''')
     co_occurrence_parser.add_argument("--binary", action='store_true', metavar="Binary matrix", widget="CheckBox", help="Select if you want to make the co-occurrence matrix binary.\n(Only 0s and 1s)", default=False)
     co_occurrence_parser.add_argument("--homogenize", action='store_true', metavar="Convert to lower case", widget="CheckBox", help="Select if you want to convert data in cells to lower cased version.", default=False)
     co_occurrence_parser.add_argument("--filter", metavar="Filterings", help="Reduce number of keywords to the given value, uses keyword frequency to filter.\nSignificantly speeds up calculating process.\nSet to 0 to disable.", widget="IntegerField", required=False, default=0)
-
-    # ------------------------------------------------------------------------ #
-    # Second action (program)
-    savedrecs_to_xlsx = subs.add_parser('savedrecs-to-xlsx', help='Convert your savedrecs files from Web Of Science to xlsx files (Excel spreadsheet).')
-
-    savedrecs_to_xlsx.add_argument("filepaths", metavar="Path(es) to WOS savedrecs file(s)", nargs='+', type=str, widget="MultiFileChooser",
-                        help="Choose path(es) to WOS savedrecs file. (.txt)",
-                        gooey_options={
-                            'wildcard':
-                                "TXT (savedrecs file) (*.txt)|*.txt;|"
-                                "All files (*.*)|*.*",
-                            'default_file': "Pick savedrecs file",
-                            'message': "Select TXT (WOS savedrecs) file"
-                        }
-                        )
-    savedrecs_to_xlsx.add_argument("save_as", metavar="Save as...", help="Choose the output file name.",widget="FileSaver",
-                        default=os.path.join(get_execution_folder(),"savedrecs_output.xlsx"),
-                        gooey_options={
-                                'wildcard':
-                                    "XLSX (Excel spreadsheet) (*.xlsx)|*.xlsx|"
-                                    "All files (*.*)|*.*",
-                                'message': "Create a name for the xlsx file",
-                            })
-
+    co_occurrence_parser.add_argument("--frequency", action='store_true', metavar="Frequency Analysis", widget="CheckBox", help="Select if you want to add sheet with frequency analysis.", default=True)
     args = parser.parse_args()
 
     if args.command == "co-occurrence-analysis":
@@ -117,15 +97,36 @@ Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.''')
         Binary: {args.binary}
         Convert to lower case: {args.homogenize}
         Filter (Leave only): {args.filter if args.filter != 0 else "All keywords"}
+        Frequency analysis: {args.frequency}
     ----------------------------------------------------''')
         logger.info(f"Loading {args.filepaths} file.")
 
         graph = list()
         for filepath in args.filepaths:
-            # Loading values from each spreadsheet file
-            for element in load_xls_sheet_values(filepath, args.range, args.sheet_name, args.delimeter):
-                graph.append(element)
+            if filepath.endswith(".txt"):
+                temp_name = filepath.split(".")[0] + str(uuid4()) + ".xlsx"
+                generate_excel(read_savedrecs(filepath), temp_name)
+                for element in load_xls_sheet_values(temp_name, args.range, args.sheet_name, args.delimeter):
+                    graph.append(element)
+                os.remove(temp_name)
+            else:
+                for element in load_xls_sheet_values(filepath, args.range, args.sheet_name, args.delimeter):
+                    graph.append(element)
         logger.info(f"Successfully loaded and read {args.filepaths}.")
+
+        # Counting frequency
+        most_common = None
+        if args.frequency:
+            logger.info("Calculating frequency.")
+            all_keywords = list()
+            for line in graph:
+                for keyword in line:
+                    all_keywords.append(keyword)
+            
+            # Sorting by quantity
+            c = Counter(all_keywords)
+            most_common = c.most_common()
+            logger.info("Finished calculating frequency.")
 
         if int(args.filter) != 0:
             logger.info(f"Starting to filter down to {args.filter} keywords.")
@@ -157,34 +158,8 @@ Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.''')
         logger.info("Successfully generated co-occurrence matrix.")
 
         logger.info(f"Writing to {args.save_as}")
-        generate_excel(co_occurrence_matrix, args.save_as)
-        logger.info("Success! The program has finished.")
 
-    elif args.command == "savedrecs-to-xlsx":
-        logger.info(f'''The settings are:
-    ----------------------------------------------------
-                {APP_NAME} {__version__}    
-    ----------------------------------------------------
-        WOS savedrecs path(es): {args.filepaths}
-        Save As: {args.save_as}
-    ----------------------------------------------------''')
-        logger.info(f"Loading {args.filepaths} file(s).")
-        logger.info("Starting to read savedrecs file(s).")
-        if len(args.filepaths) == 1:
-            final_matrix = read_savedrecs(args.filepaths[0])
-        else:
-            logger.info("Multiple files selected, they will be combined to a single .xlsx file.")
-            filepaths = args.filepaths
-            first_file = filepaths.pop(0)
-            final_matrix = list(read_savedrecs(first_file)[:-1])
-            for filename in filepaths:
-                for line in read_savedrecs(filename)[1:-1]:
-                    final_matrix.append(line)
-        logger.info("Successfully read file(s).")
-
-        logger.info("Starting to write to a .xlsx file.")
-        generate_excel(final_matrix, args.save_as)
-        logger.info("Successfully created .xlsx file.")
+        generate_excel(co_occurrence_matrix, output_filename=args.save_as, frequency_analysis=most_common)
         logger.info("Success! The program has finished.")
 
 

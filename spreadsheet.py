@@ -3,7 +3,7 @@
 import os
 import logging
 import time
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Any
 
 import xlsxwriter
 import openpyxl
@@ -30,15 +30,22 @@ def in_use(filename):
         return True
 
 def generate_excel(matrix: List[List[Union[str, int]]],
-                   output_filename: str) -> None:
+                   output_filename: str, frequency_analysis: List[tuple[Any, int]]=None) -> None:
     '''Generate xlsx file from co-occurrence matrix.'''
     try:
         workbook = xlsxwriter.Workbook(output_filename)
-        worksheet = workbook.add_worksheet()
+        worksheet = workbook.add_worksheet("Co-occurrence matrix")
         col = 0
 
         for row, data in enumerate(matrix):
             worksheet.write_row(row, col, data)
+
+        if frequency_analysis != None:
+            second_worksheet = workbook.add_worksheet("Frequency Analysis")
+            col = 0
+
+            for row, data in enumerate(frequency_analysis):
+                second_worksheet.write_row(row, col, data)
 
         workbook.close()
     except xlsxwriter.exceptions.FileCreateError:
@@ -46,7 +53,7 @@ def generate_excel(matrix: List[List[Union[str, int]]],
         while in_use(output_filename):
             time.sleep(0.1)
         logger.info(f"You have closed: {repr(output_filename)}, continuing saving to that file.")
-        generate_excel(matrix, output_filename)
+        generate_excel(matrix, output_filename, frequency_analysis)
             
 def create_xlsx_copy(filename:str) -> None:
     '''Convert file with other spreadsheet filetype format to .xlsx'''
