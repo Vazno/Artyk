@@ -23,9 +23,11 @@ def filter_by_frequency(graph: List[List[str]], num: int) -> List[List[str]]:
     most_common = c.most_common()
 
     filtered_arr = list()
-
-    for i in range(num):
-        filtered_arr.append(most_common[i][0]) # extracting keyword
+    try:
+        for i in range(num):
+            filtered_arr.append(most_common[i][0]) # extracting keyword
+    except IndexError:
+        pass
 
     new_graph = list()
     for line in graph:

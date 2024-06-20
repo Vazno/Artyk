@@ -77,7 +77,7 @@ Import Data from .xlsx, .xls .csv. Homogenize given data using lemmatizing.''')
     co_occurrence_parser.add_argument("--binary", action='store_true', metavar="Binary matrix", widget="CheckBox", help="Select if you want to make the co-occurrence matrix binary.\n(Only 0s and 1s)", default=False)
     co_occurrence_parser.add_argument("--homogenize", action='store_true', metavar="Convert to lower case", widget="CheckBox", help="Select if you want to convert data in cells to lower cased version.", default=False)
     co_occurrence_parser.add_argument("--filter", metavar="Filterings", help="Reduce number of keywords to the given value, uses keyword frequency to filter.\nSignificantly speeds up calculating process.\nSet to 0 to disable.", widget="IntegerField", required=False, default=0)
-    co_occurrence_parser.add_argument("--frequency", action='store_true', metavar="Frequency Analysis", widget="CheckBox", help="Select if you want to add sheet with frequency analysis.", default=True)
+    co_occurrence_parser.add_argument("--frequency", action='store_true', metavar="Frequency Analysis", widget="CheckBox", help="Select if you want to add sheet with frequency analysis.", default=False)
     args = parser.parse_args()
 
     if args.command == "co-occurrence-analysis":
